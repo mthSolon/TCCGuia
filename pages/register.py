@@ -1,11 +1,17 @@
 import streamlit as st
-
+from main import _setup_db_connection
 from database import Database
+from helpers import fetch_cookies
 from src.hasher import Hasher
+from typing import Union
 
 
 class RegisterPage:
     def __init__(self) -> None:
+        self.cookies = fetch_cookies()
+        if "db_connection" not in st.session_state:
+            _setup_db_connection()
+            st.rerun()
         self.db: Database = st.session_state["db_connection"]
         self._render_register_page()
 
@@ -19,26 +25,35 @@ class RegisterPage:
         if st.button("Já possuo uma conta"):
             st.switch_page("pages/login.py")
         if register_form.form_submit_button("Cadastrar"):
-            self._register_user()
-            if st.session_state["authentication_status"] == None:
-                st.warning("Por favor, preencha os campos necessários.")
-            if st.session_state["authentication_status"] == False:
-                st.error("Ocorreu um erro.")
-            if st.session_state["authentication_status"] == True:
-                st.switch_page("pages/login.py")
+            msg = self._register_user()
+            if self.cookies["authentication_status"] == "dados_invalidos":
+                st.warning(msg)
+            if self.cookies["authentication_status"] == "nao_autorizado":
+                st.error(msg)
+            if self.cookies["authentication_status"] == "autorizado":
+                st.switch_page("pages/homepage.py")
 
 
-    def _register_user(self) -> bool:
-        if not (self.username or self.email or self.password):
-            st.session_state["authentication_status"] = None
-            return None
+    def _register_user(self) -> Union[bool, str]:
+        """Register user
+
+        Returns:
+            Union[bool, str]: True if the user was registered, str if wasn't
+        """
+        if not (self.username and self.email and self.password):
+            self.cookies["authentication_status"] = "dados_invalidos"
+            return "Por favor, preencha os campos necessários."
+        user, _ = self.db.read_user(self.email)
+        if user:
+            self.cookies["authentication_status"] = "nao_autorizado"
+            return "Usuário com este email já está cadastrado"
         self.password = Hasher.hash_pw(self.password)
-        status = self.db.insert_user(self.username, self.email, self.password)
+        status = self.db.create_user(self.username, self.email, self.password)
         if status:
-            st.session_state["username"] = self.username
-            st.session_state["authentication_status"] = True
+            self.cookies["username"] = self.username
+            self.cookies["authentication_status"] = "autorizado"
             return True
         else:
-            st.session_state["authentication_status"] = False
-            return False
+            self.cookies["authentication_status"] = "nao_autorizado"
+            return "Ocorreu um erro"
 RegisterPage()

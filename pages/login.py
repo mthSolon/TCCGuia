@@ -1,13 +1,20 @@
 import streamlit as st
-
+from database import Database
+from helpers import fetch_cookies
+from main import _setup_db_connection
 from src.hasher import Hasher
+from typing import Union
 
 
 class LoginPage:
     def __init__(self):
-        if st.session_state.get("authentication_status"):
+        self.cookies = fetch_cookies()
+        if self.cookies.get("authentication_status"):
             st.switch_page("pages/homepage.py")
-        self.db = st.session_state["db_connection"]
+        if "db_connection" not in st.session_state:
+            _setup_db_connection()
+            st.rerun()
+        self.db: Database = st.session_state["db_connection"]
         self._render_login_page()
 
     def _render_login_page(self) -> None:
@@ -19,30 +26,30 @@ class LoginPage:
         if st.button("Não possui uma conta? Cadastre-se!"):
             st.switch_page("pages/register.py")
         if login_form.form_submit_button("Entrar"):
-            self._check_credentials()
-            if st.session_state["authentication_status"] == None:
-                st.warning("Por favor, preencha os campos necessários.")
-            if st.session_state["authentication_status"] == False:
-                st.error("E-mail ou senha incorretos.")
-            if st.session_state["authentication_status"] == True:
+            msg = self._check_credentials()
+            if self.cookies["authentication_status"] == "dados_invalidos":
+                st.warning(msg)
+            if self.cookies["authentication_status"] == "nao_autorizado":
+                st.error(msg)
+            if self.cookies["authentication_status"] == "autorizado":
                 st.switch_page("pages/homepage.py")
 
-    def _check_credentials(self) -> bool:
+    def _check_credentials(self) -> Union[bool, str]:
         """Check if the user credentials are valid
 
         Returns:
-            bool: True if is valid, False otherwise
+            Union[bool, str]: True if is valid, str otherwise
         """
         if not (self.email and self.password):
-            st.session_state["authentication_status"] = None
-            return None
-        user, user_pw = self.db.check_user(self.email)
+            self.cookies["authentication_status"] = "dados_invalidos"
+            return "Por favor, preencha os campos necessários."
+        user, user_pw = self.db.read_user(self.email)
         if user and Hasher.check_pw(user_pw, self.password):
-            st.session_state["username"] = user
-            st.session_state["authentication_status"] = True
+            self.cookies["username"] = user
+            self.cookies["authentication_status"] = "autorizado"
             return True
         else:
-            st.session_state["authentication_status"] = False
-            return False
+            self.cookies["authentication_status"] = "nao_autorizado"
+            return "E-mail ou senha incorretos."
 
 LoginPage()

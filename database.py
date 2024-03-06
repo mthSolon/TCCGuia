@@ -4,6 +4,7 @@ import streamlit as st
 from dataclasses import dataclass
 from typing import Dict, List, Optional
 
+
 @dataclass
 class Database:
     """Manages database functionality"""
@@ -49,7 +50,7 @@ class Database:
             except psycopg2.OperationalError as e:
                 print(f"Error: '{e}'")
     
-    def check_user(self, email: str) -> Optional[str]:
+    def read_user(self, email: str) -> Optional[str]:
         """Check if a user exists in the database
 
         Args:
@@ -66,12 +67,12 @@ class Database:
                 user = cursor.fetchone()
                 if user:
                     return user.username, user.senha
-                return None
+                return None, None
             except psycopg2.Error as e:
                 print(f"Error: {e}")
 
-    def insert_user(self, username: str, email: str, password: str) -> bool:
-        """Insert user in the database
+    def create_user(self, username: str, email: str, password: str) -> bool:
+        """Create user in the database
 
         Args:
             username (str): user's name
