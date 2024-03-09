@@ -9,8 +9,8 @@ from typing import Union
 class LoginPage:
     def __init__(self):
         self.cookies = fetch_cookies()
-        if self.cookies.get("authentication_status"):
-            st.switch_page("pages/homepage.py")
+        if self.cookies.get("authentication_status") == "autorizado":
+            st.switch_page("pages/resumes.py")
         if "db_connection" not in st.session_state:
             _setup_db_connection()
             st.rerun()
@@ -29,10 +29,10 @@ class LoginPage:
             msg = self._check_credentials()
             if self.cookies["authentication_status"] == "dados_invalidos":
                 st.warning(msg)
-            if self.cookies["authentication_status"] == "nao_autorizado":
+            elif self.cookies["authentication_status"] == "nao_autorizado":
                 st.error(msg)
-            if self.cookies["authentication_status"] == "autorizado":
-                st.switch_page("pages/homepage.py")
+            elif self.cookies["authentication_status"] == "autorizado":
+                st.switch_page("pages/resumes.py")
 
     def _check_credentials(self) -> Union[bool, str]:
         """Check if the user credentials are valid
@@ -43,9 +43,10 @@ class LoginPage:
         if not (self.email and self.password):
             self.cookies["authentication_status"] = "dados_invalidos"
             return "Por favor, preencha os campos necessários."
-        user, user_pw = self.db.read_user(self.email)
-        if user and Hasher.check_pw(user_pw, self.password):
-            self.cookies["username"] = user
+        user_id, username, user_pw = self.db.read_user(self.email)
+        if user_id and Hasher.check_pw(user_pw, self.password):
+            self.cookies["username"] = username
+            self.cookies["user_id"] = str(user_id)
             self.cookies["authentication_status"] = "autorizado"
             return True
         else:

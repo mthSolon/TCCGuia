@@ -28,10 +28,10 @@ class RegisterPage:
             msg = self._register_user()
             if self.cookies["authentication_status"] == "dados_invalidos":
                 st.warning(msg)
-            if self.cookies["authentication_status"] == "nao_autorizado":
+            elif self.cookies["authentication_status"] == "nao_autorizado":
                 st.error(msg)
-            if self.cookies["authentication_status"] == "autorizado":
-                st.switch_page("pages/homepage.py")
+            elif self.cookies["authentication_status"] == "autorizado":
+                st.switch_page("pages/resumes.py")
 
 
     def _register_user(self) -> Union[bool, str]:
@@ -43,14 +43,15 @@ class RegisterPage:
         if not (self.username and self.email and self.password):
             self.cookies["authentication_status"] = "dados_invalidos"
             return "Por favor, preencha os campos necessários."
-        user, _ = self.db.read_user(self.email)
-        if user:
+        _, username, _ = self.db.read_user(self.email)
+        if username:
             self.cookies["authentication_status"] = "nao_autorizado"
             return "Usuário com este email já está cadastrado"
         self.password = Hasher.hash_pw(self.password)
-        status = self.db.create_user(self.username, self.email, self.password)
-        if status:
+        user_id = self.db.create_user(self.username, self.email, self.password)
+        if user_id:
             self.cookies["username"] = self.username
+            self.cookies["user_id"] = str(user_id)
             self.cookies["authentication_status"] = "autorizado"
             return True
         else:
