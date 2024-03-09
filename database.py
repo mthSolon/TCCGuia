@@ -1,8 +1,8 @@
 import psycopg2
-import psycopg2.extras
+from psycopg2.extras import execute_batch, NamedTupleCursor
 import streamlit as st
 from dataclasses import dataclass
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple, Union
 
 
 @dataclass
@@ -41,37 +41,29 @@ class Database:
         """
         query = "SELECT * FROM users;"
         cursor = self.connection.cursor()
-        users = None
         with self.connection.cursor() as cursor:
-            try:
-                cursor.execute(query)
-                users = cursor.fetchall()
-                return users
-            except psycopg2.OperationalError as e:
-                print(f"Error: '{e}'")
+            cursor.execute(query)
+            users = cursor.fetchall()
+            return users
     
-    def read_user(self, email: str) -> Optional[str]:
+    def read_user(self, email: str) -> Optional[Tuple[int, str]]:
         """Check if a user exists in the database
 
         Args:
             email (str): user's email
 
         Returns:
-            Optional[str]: user name
+            Optional[Tuple[int, str]]: user_id, username and password
         """
-        query = f"SELECT username, senha FROM users WHERE email = %s;"
-        user = None
-        with self.connection.cursor(cursor_factory=psycopg2.extras.NamedTupleCursor) as cursor:
-            try:
-                cursor.execute(query, (email,))
-                user = cursor.fetchone()
-                if user:
-                    return user.username, user.senha
-                return None, None
-            except psycopg2.Error as e:
-                print(f"Error: {e}")
+        query = "SELECT id, username, senha FROM users WHERE email = %s;"
+        with self.connection.cursor(cursor_factory=NamedTupleCursor) as cursor:
+            cursor.execute(query, (email,))
+            user = cursor.fetchone()
+            if user:
+                return user.id, user.username, user.senha
+            return None, None, None
 
-    def create_user(self, username: str, email: str, password: str) -> bool:
+    def create_user(self, username: str, email: str, password: str) -> int:
         """Create user in the database
 
         Args:
@@ -80,18 +72,84 @@ class Database:
             password (str): user's password
 
         Returns:
-            bool: True if operation was sucessful, False otherwise.
+            int: user id
         """
-        query = f"INSERT INTO users (username, email, senha) VALUES (%s, %s, %s);"
-        with self.connection.cursor(cursor_factory=psycopg2.extras.NamedTupleCursor) as cursor:
-            try:
-                self.connection.autocommit = False
-                cursor.execute("BEGIN;")
-                cursor.execute(query, (username, email, password))
-                self.connection.commit()
-                print(f"{username} registered")
+        insert_query = "INSERT INTO users (username, email, senha) VALUES (%s, %s, %s);"
+        select_query = "SELECT id FROM users WHERE email = %s;"
+        with self.connection.cursor(cursor_factory=NamedTupleCursor) as cursor:
+            cursor.execute(insert_query, (username, email, password))
+            self.connection.commit()
+            print(f"{username} registered")
+            cursor.execute(select_query, (email,))
+            user = cursor.fetchone()
+            return user.id
+
+    def create_professors(self, teachers: List[Dict[str, List[str]]], user_id: Union[str, int]) -> bool:
+        """Create professors in the database
+
+        Args:
+            teachers (List[Dict[str, List[str]]]): professors's infos
+            user_id (Union[str, int]): user id
+
+        Returns:
+            bool: True if operation was successful
+        """        
+
+        professors_query = """INSERT INTO docentes (user_id, nome, areas_de_atuacao)
+        SELECT %(user_id)s, %(nome)s, %(especialidade)s WHERE NOT EXISTS (
+        SELECT user_id, nome, areas_de_atuacao FROM docentes WHERE
+        user_id = %(user_id)s AND nome = %(nome)s AND areas_de_atuacao = %(especialidade)s  
+        );
+        """
+        user_query = """UPDATE users SET professores =
+        (SELECT ARRAY(
+            SELECT professor_id FROM docentes
+            WHERE docentes.user_id = %s)
+        )"""
+        teachers_to_insert = [
+            {"user_id": int(user_id), "nome": teacher, "especialidade": specialties} 
+            for teacher, specialties in teachers.items()
+            ]
+        with self.connection.cursor(cursor_factory=NamedTupleCursor) as cursor:
+            execute_batch(cursor, professors_query, teachers_to_insert)
+            self.connection.commit()
+            cursor.execute(user_query, (int(user_id),))
+            self.connection.commit()
+            print(f"Teachers for {user_id} created")
+            return True
+        
+    def read_professor(self, professor_name: str, user_id: Union[str, int]) -> Optional[Tuple[int, str, List[str]]]:
+        """Read professor in the database
+
+        Args:
+            professor_name (str): professor's name
+            user_id (Union[str, int]): user id
+
+        Returns:
+            Optional[Tuple[int, str, List[str]]]: Tuple containing the professor's ID, name and specialties, None if there's
+            no professor.
+        """
+        query = "SELECT professor_id, nome, areas_de_atuacao FROM docentes WHERE user_id = %s AND nome = %s;"
+        with self.connection.cursor(cursor_factory=NamedTupleCursor) as cursor:
+            cursor.execute(query, (int(user_id), professor_name))
+            professor = cursor.fetchone()
+            if professor:
+                return professor.professor_id, professor.name, professor.areas_de_atuacao
+            None, None, None
+
+    def delete_professor(self, professor_id: Union[str, int]) -> bool:
+        """Delete professor in the database
+
+        Args:
+            professor_id (Union[str, int]): professor id
+
+        Returns:
+            bool: True if deletion was successful, False otherwise
+        """
+        query = "DELETE FROM docentes WHERE professor_id = %s RETURNING nome;"
+        with self.connection.cursor(cursor_factory=NamedTupleCursor) as cursor:
+            professor_name = cursor.execute(query, (professor_id,))
+            if professor_name:
+                print(f"{professor_name} was deleteted successfully!")
                 return True
-            except psycopg2.Error as e:
-                self.connection.rollback()
-                print(f"Error: {e}")
-                return False
+            return False
