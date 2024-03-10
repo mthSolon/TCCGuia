@@ -134,7 +134,7 @@ class Database:
             cursor.execute(query, (int(user_id), professor_name))
             professor = cursor.fetchone()
             if professor:
-                return professor.professor_id, professor.name, professor.areas_de_atuacao
+                return professor.professor_id, professor.nome, professor.areas_de_atuacao
             None, None, None
 
     def delete_professor(self, professor_id: Union[str, int]) -> bool:
@@ -146,10 +146,8 @@ class Database:
         Returns:
             bool: True if deletion was successful, False otherwise
         """
-        query = "DELETE FROM docentes WHERE professor_id = %s RETURNING nome;"
+        query = "DELETE FROM docentes WHERE professor_id = %s;"
         with self.connection.cursor(cursor_factory=NamedTupleCursor) as cursor:
-            professor_name = cursor.execute(query, (professor_id,))
-            if professor_name:
-                print(f"{professor_name} was deleteted successfully!")
-                return True
-            return False
+            cursor.execute(query, (int(professor_id),))
+            self.connection.commit()
+            return True

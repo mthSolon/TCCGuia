@@ -33,7 +33,6 @@ class RegisterPage:
             elif self.cookies["authentication_status"] == "autorizado":
                 st.switch_page("pages/resumes.py")
 
-
     def _register_user(self) -> Union[bool, str]:
         """Register user
 
