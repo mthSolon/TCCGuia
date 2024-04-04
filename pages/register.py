@@ -1,12 +1,15 @@
+"""Class and methods to render register page"""
+
+from typing import Union
 import streamlit as st
 from main import _setup_db_connection
-from database import Database
-from helpers import fetch_cookies
+from src.database import Database
+from src.helpers import fetch_cookies
 from src.hasher import Hasher
-from typing import Union
 
 
 class RegisterPage:
+    """Class to render register page"""
     def __init__(self) -> None:
         self.cookies = fetch_cookies()
         if "db_connection" not in st.session_state:
@@ -46,8 +49,8 @@ class RegisterPage:
         if username:
             self.cookies["authentication_status"] = "nao_autorizado"
             return "Usuário com este email já está cadastrado"
-        self.password = Hasher.hash_pw(self.password)
-        user_id = self.db.create_user(self.username, self.email, self.password)
+        hashed_pw = Hasher.hash_pw(self.password)
+        user_id = self.db.create_user(self.username, self.email, hashed_pw)
         if user_id:
             self.cookies["username"] = self.username
             self.cookies["user_id"] = str(user_id)
@@ -56,4 +59,5 @@ class RegisterPage:
         else:
             self.cookies["authentication_status"] = "nao_autorizado"
             return "Ocorreu um erro"
+
 RegisterPage()

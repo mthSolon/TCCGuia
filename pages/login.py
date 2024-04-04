@@ -1,12 +1,15 @@
-import streamlit as st
-from database import Database
-from helpers import fetch_cookies
-from main import _setup_db_connection
-from src.hasher import Hasher
+"""Class and methods to render login page"""
+
 from typing import Union
+import streamlit as st
+from src.hasher import Hasher
+from src.database import Database
+from src.helpers import fetch_cookies
+from main import _setup_db_connection
 
 
 class LoginPage:
+    """Class to render login page"""
     def __init__(self):
         self.cookies = fetch_cookies()
         if self.cookies.get("authentication_status") == "autorizado":

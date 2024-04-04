@@ -1,8 +1,10 @@
+"""Database related class and methods"""
+
+from typing import Dict, List, Optional, Tuple, Union
+from dataclasses import dataclass, field
 import psycopg2
 from psycopg2.extras import execute_batch, NamedTupleCursor
 import streamlit as st
-from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple, Union
 
 
 @dataclass
@@ -13,6 +15,7 @@ class Database:
     db_password: str
     db_host: str
     db_port: int
+    connection: psycopg2.extensions.connection = field(default=None, init=False)
 
     def init_connection(self):
         """Initialize the database connection."""
@@ -20,7 +23,7 @@ class Database:
             self.connection = self._create_connection()
         except psycopg2.OperationalError as e:
             print(f"Error: '{e}'")
-    
+
     @st.cache_resource
     def _create_connection(self) -> psycopg2.extensions.connection:
         """Create and caches the connection with the database."""
@@ -45,7 +48,7 @@ class Database:
             cursor.execute(query)
             users = cursor.fetchall()
             return users
-    
+
     def read_user(self, email: str) -> Optional[Tuple[int, str]]:
         """Check if a user exists in the database
 
@@ -84,7 +87,11 @@ class Database:
             user = cursor.fetchone()
             return user.id
 
-    def create_professors(self, teachers: List[Dict[str, List[str]]], user_id: Union[str, int]) -> bool:
+    def create_professors(
+            self,
+            teachers: List[Dict[str, List[str]]],
+            user_id: Union[str, int]
+            ) -> bool:
         """Create professors in the database
 
         Args:
@@ -93,7 +100,7 @@ class Database:
 
         Returns:
             bool: True if operation was successful
-        """        
+        """
 
         professors_query = """INSERT INTO docentes (user_id, nome, areas_de_atuacao)
         SELECT %(user_id)s, %(nome)s, %(especialidade)s WHERE NOT EXISTS (
@@ -107,7 +114,7 @@ class Database:
             WHERE docentes.user_id = %s)
         )"""
         teachers_to_insert = [
-            {"user_id": int(user_id), "nome": teacher, "especialidade": specialties} 
+            {"user_id": int(user_id), "nome": teacher, "especialidade": specialties}
             for teacher, specialties in teachers.items()
             ]
         with self.connection.cursor(cursor_factory=NamedTupleCursor) as cursor:
@@ -117,8 +124,12 @@ class Database:
             self.connection.commit()
             print(f"Teachers for {user_id} created")
             return True
-        
-    def read_professor(self, professor_name: str, user_id: Union[str, int]) -> Optional[Tuple[int, str, List[str]]]:
+
+    def read_professor(
+            self,
+            professor_name: str,
+            user_id: Union[str, int]
+            ) -> Optional[Tuple[int, str, List[str]]]:
         """Read professor in the database
 
         Args:
@@ -126,16 +137,18 @@ class Database:
             user_id (Union[str, int]): user id
 
         Returns:
-            Optional[Tuple[int, str, List[str]]]: Tuple containing the professor's ID, name and specialties, None if there's
-            no professor.
+            Optional[Tuple[int, str, List[str]]]: Tuple containing the professor's ID, 
+            name and specialties, None if there's no professor.
         """
-        query = "SELECT professor_id, nome, areas_de_atuacao FROM docentes WHERE user_id = %s AND nome = %s;"
+        query = """
+        SELECT professor_id, nome, areas_de_atuacao FROM docentes WHERE user_id = %s AND nome = %s;
+        """
         with self.connection.cursor(cursor_factory=NamedTupleCursor) as cursor:
             cursor.execute(query, (int(user_id), professor_name))
             professor = cursor.fetchone()
             if professor:
                 return professor.professor_id, professor.nome, professor.areas_de_atuacao
-            None, None, None
+            return None, None, None
 
     def delete_professor(self, professor_id: Union[str, int]) -> bool:
         """Delete professor in the database
