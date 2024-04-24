@@ -10,6 +10,7 @@ import streamlit as st
 @dataclass
 class Database:
     """Manages database functionality"""
+
     db_name: str
     db_user: str
     db_password: str
@@ -21,20 +22,20 @@ class Database:
         """Initialize the database connection."""
         try:
             self.connection = self._create_connection()
+            print(f"Connection to {st.secrets.db_credentials.db_host} successful")
         except psycopg2.OperationalError as e:
-            print(f"Error: '{e}'")
+            print(f"Database Error: '{e}'")
 
     @st.cache_resource
     def _create_connection(self) -> psycopg2.extensions.connection:
         """Create and caches the connection with the database."""
-        print(f"Connection to {st.secrets.db_credentials.db_host} successful")
         return psycopg2.connect(
-                database=self.db_name,
-                user=self.db_user,
-                password=self.db_password,
-                host=self.db_host,
-                port=self.db_port,
-            )
+            database=self.db_name,
+            user=self.db_user,
+            password=self.db_password,
+            host=self.db_host,
+            port=self.db_port,
+        )
 
     def fetch_users(self) -> List[Dict]:
         """Fetch all users data
@@ -88,10 +89,8 @@ class Database:
             return user.id
 
     def create_professors(
-            self,
-            teachers: List[Dict[str, List[str]]],
-            user_id: Union[str, int]
-            ) -> bool:
+        self, teachers: List[Dict[str, List[str]]], user_id: Union[str, int]
+    ) -> bool:
         """Create professors in the database
 
         Args:
@@ -116,7 +115,7 @@ class Database:
         teachers_to_insert = [
             {"user_id": int(user_id), "nome": teacher, "especialidade": specialties}
             for teacher, specialties in teachers.items()
-            ]
+        ]
         with self.connection.cursor(cursor_factory=NamedTupleCursor) as cursor:
             execute_batch(cursor, professors_query, teachers_to_insert)
             self.connection.commit()
@@ -126,10 +125,8 @@ class Database:
             return True
 
     def read_professor(
-            self,
-            professor_name: str,
-            user_id: Union[str, int]
-            ) -> Optional[Tuple[int, str, List[str]]]:
+        self, professor_name: str, user_id: Union[str, int]
+    ) -> Optional[Tuple[int, str, List[str]]]:
         """Read professor in the database
 
         Args:
@@ -137,7 +134,7 @@ class Database:
             user_id (Union[str, int]): user id
 
         Returns:
-            Optional[Tuple[int, str, List[str]]]: Tuple containing the professor's ID, 
+            Optional[Tuple[int, str, List[str]]]: Tuple containing the professor's ID,
             name and specialties, None if there's no professor.
         """
         query = """
@@ -147,7 +144,11 @@ class Database:
             cursor.execute(query, (int(user_id), professor_name))
             professor = cursor.fetchone()
             if professor:
-                return professor.professor_id, professor.nome, professor.areas_de_atuacao
+                return (
+                    professor.professor_id,
+                    professor.nome,
+                    professor.areas_de_atuacao,
+                )
             return None, None, None
 
     def delete_professor(self, professor_id: Union[str, int]) -> bool:
