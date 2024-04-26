@@ -44,11 +44,11 @@ class Database:
             List[Dict]: users data
         """
         query = "SELECT * FROM users;"
-        cursor = self.connection.cursor()
-        with self.connection.cursor() as cursor:
-            cursor.execute(query)
-            users = cursor.fetchall()
-            return users
+        with self.connection:
+            with self.connection.cursor() as cursor:
+                cursor.execute(query)
+                users = cursor.fetchall()
+                return users
 
     def read_user(self, email: str) -> Optional[Tuple[int, str]]:
         """Check if a user exists in the database
@@ -60,12 +60,13 @@ class Database:
             Optional[Tuple[int, str]]: user_id, username and password
         """
         query = "SELECT id, username, senha FROM users WHERE email = %s;"
-        with self.connection.cursor(cursor_factory=NamedTupleCursor) as cursor:
-            cursor.execute(query, (email,))
-            user = cursor.fetchone()
-            if user:
-                return user.id, user.username, user.senha
-            return None, None, None
+        with self.connection:
+            with self.connection.cursor(cursor_factory=NamedTupleCursor) as cursor:
+                cursor.execute(query, (email,))
+                user = cursor.fetchone()
+                if user:
+                    return user.id, user.username, user.senha
+                return None, None, None
 
     def create_user(self, username: str, email: str, password: str) -> int:
         """Create user in the database
@@ -80,13 +81,14 @@ class Database:
         """
         insert_query = "INSERT INTO users (username, email, senha) VALUES (%s, %s, %s);"
         select_query = "SELECT id FROM users WHERE email = %s;"
-        with self.connection.cursor(cursor_factory=NamedTupleCursor) as cursor:
-            cursor.execute(insert_query, (username, email, password))
-            self.connection.commit()
-            print(f"{username} registered")
-            cursor.execute(select_query, (email,))
-            user = cursor.fetchone()
-            return user.id
+        with self.connection:
+            with self.connection.cursor(cursor_factory=NamedTupleCursor) as cursor:
+                cursor.execute(insert_query, (username, email, password))
+                self.connection.commit()
+                print(f"{username} registered")
+                cursor.execute(select_query, (email,))
+                user = cursor.fetchone()
+                return user.id
 
     def create_professors(
         self, teachers: List[Dict[str, List[str]]], user_id: Union[str, int]
@@ -116,13 +118,14 @@ class Database:
             {"user_id": int(user_id), "nome": teacher, "especialidade": specialties}
             for teacher, specialties in teachers.items()
         ]
-        with self.connection.cursor(cursor_factory=NamedTupleCursor) as cursor:
-            execute_batch(cursor, professors_query, teachers_to_insert)
-            self.connection.commit()
-            cursor.execute(user_query, (int(user_id),))
-            self.connection.commit()
-            print(f"Teachers for {user_id} created")
-            return True
+        with self.connection:
+            with self.connection.cursor(cursor_factory=NamedTupleCursor) as cursor:
+                execute_batch(cursor, professors_query, teachers_to_insert)
+                self.connection.commit()
+                cursor.execute(user_query, (int(user_id),))
+                self.connection.commit()
+                print(f"Teachers for {user_id} created")
+                return True
 
     def read_professor(
         self, professor_name: str, user_id: Union[str, int]
@@ -140,16 +143,17 @@ class Database:
         query = """
         SELECT professor_id, nome, areas_de_atuacao FROM docentes WHERE user_id = %s AND nome = %s;
         """
-        with self.connection.cursor(cursor_factory=NamedTupleCursor) as cursor:
-            cursor.execute(query, (int(user_id), professor_name))
-            professor = cursor.fetchone()
-            if professor:
-                return (
-                    professor.professor_id,
-                    professor.nome,
-                    professor.areas_de_atuacao,
-                )
-            return None, None, None
+        with self.connection:
+            with self.connection.cursor(cursor_factory=NamedTupleCursor) as cursor:
+                cursor.execute(query, (int(user_id), professor_name))
+                professor = cursor.fetchone()
+                if professor:
+                    return (
+                        professor.professor_id,
+                        professor.nome,
+                        professor.areas_de_atuacao,
+                    )
+                return None, None, None
 
     def delete_professor(self, professor_id: Union[str, int]) -> bool:
         """Delete professor in the database
@@ -161,7 +165,8 @@ class Database:
             bool: True if deletion was successful, False otherwise
         """
         query = "DELETE FROM docentes WHERE professor_id = %s;"
-        with self.connection.cursor(cursor_factory=NamedTupleCursor) as cursor:
-            cursor.execute(query, (int(professor_id),))
-            self.connection.commit()
-            return True
+        with self.connection:
+            with self.connection.cursor(cursor_factory=NamedTupleCursor) as cursor:
+                cursor.execute(query, (int(professor_id),))
+                self.connection.commit()
+                return True
