@@ -2,7 +2,7 @@
 
 from typing import Union
 import streamlit as st
-from main import _setup_db_connection
+from main import setup_db_connection
 from src.database import Database
 from src.helpers import fetch_cookies
 from src.hasher import Hasher
@@ -10,10 +10,11 @@ from src.hasher import Hasher
 
 class RegisterPage:
     """Class to render register page"""
+
     def __init__(self) -> None:
         self.cookies = fetch_cookies()
         if "db_connection" not in st.session_state:
-            _setup_db_connection()
+            setup_db_connection()
             st.rerun()
         self.db: Database = st.session_state["db_connection"]
         self._render_register_page()
@@ -59,5 +60,6 @@ class RegisterPage:
         else:
             self.cookies["authentication_status"] = "nao_autorizado"
             return "Ocorreu um erro"
+
 
 RegisterPage()

@@ -2,3 +2,4 @@ psycopg2_binary==2.9.9
 python_bcrypt==0.3.2
 streamlit==1.33.0
 streamlit_cookies_manager==0.2.0
+FlagEmbedding==1.2.9

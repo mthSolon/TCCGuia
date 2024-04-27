@@ -5,17 +5,18 @@ import streamlit as st
 from src.hasher import Hasher
 from src.database import Database
 from src.helpers import fetch_cookies
-from main import _setup_db_connection
+from main import setup_db_connection
 
 
 class LoginPage:
     """Class to render login page"""
+
     def __init__(self):
         self.cookies = fetch_cookies()
         if self.cookies.get("authentication_status") == "autorizado":
             st.switch_page("pages/resumes.py")
         if "db_connection" not in st.session_state:
-            _setup_db_connection()
+            setup_db_connection()
             st.rerun()
         self.db: Database = st.session_state["db_connection"]
         self._render_login_page()
@@ -55,5 +56,6 @@ class LoginPage:
         else:
             self.cookies["authentication_status"] = "nao_autorizado"
             return "E-mail ou senha incorretos."
+
 
 LoginPage()
