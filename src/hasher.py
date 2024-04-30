@@ -2,10 +2,12 @@
 
 import bcrypt
 
+
 class Hasher:
     """Contains the methods to hash passwords and check if two hashed
     passwords are the same
     """
+
     @staticmethod
     def hash_pw(password: str) -> str:
         """Hash the password

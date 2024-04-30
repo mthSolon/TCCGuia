@@ -1,10 +1,11 @@
 """Database related class and methods"""
 
-from typing import Dict, List, Optional, Tuple, Union
 from dataclasses import dataclass, field
+from typing import Dict, List, Optional, Tuple, Union
+
 import psycopg2
-from psycopg2.extras import execute_batch, NamedTupleCursor
 import streamlit as st
+from psycopg2.extras import NamedTupleCursor, execute_batch
 
 
 @dataclass
