@@ -1,8 +1,8 @@
 """Helpers functions"""
 
 import streamlit as st
-from streamlit_cookies_manager import EncryptedCookieManager
 from src.database import Database
+from streamlit_cookies_manager import EncryptedCookieManager
 
 
 def setup_db_connection():

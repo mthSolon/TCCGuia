@@ -1,11 +1,12 @@
 """Class and methods to render register page"""
 
 from typing import Union
+
 import streamlit as st
 from main import setup_db_connection
 from src.database import Database
-from src.helpers import fetch_cookies
 from src.hasher import Hasher
+from src.helpers import fetch_cookies
 
 
 class RegisterPage:

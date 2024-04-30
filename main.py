@@ -1,6 +1,7 @@
 """Module that starts the project"""
 
 import streamlit as st
+
 from src.helpers import setup_db_connection
 
 

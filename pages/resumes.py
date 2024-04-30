@@ -1,13 +1,14 @@
 """Class and methods to render resumes page"""
 
-from typing import Dict, List, Optional
+import xml.dom.minidom
 from collections import defaultdict
 from io import BytesIO
+from typing import Dict, List, Optional
+
 import requests
-import xml.dom.minidom
 import streamlit as st
 from src.database import Database
-from src.helpers import setup_db_connection, fetch_cookies
+from src.helpers import fetch_cookies, setup_db_connection
 
 
 class ResumesPage:
