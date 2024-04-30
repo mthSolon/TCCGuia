@@ -3,17 +3,19 @@
 from typing import Dict, List, Optional
 from collections import defaultdict
 from io import BytesIO
+import requests
 import xml.dom.minidom
 import streamlit as st
 from src.database import Database
 from src.helpers import setup_db_connection, fetch_cookies
-from FlagEmbedding import BGEM3FlagModel
 
 
 class ResumesPage:
     """Class to render resumes page"""
 
     def __init__(self) -> None:
+        self.API_URL = "https://api-inference.huggingface.co/models/BAAI/bge-m3"
+        self.headers = {"Authorization": f"Bearer {st.secrets.api_token}"}
         self.cookies = fetch_cookies()
         if self.cookies.get("authentication_status") != "autorizado":
             st.switch_page("pages/login.py")
@@ -42,37 +44,35 @@ class ResumesPage:
         if st.button("Sugerir professores") and theme_and_resumes_validated:
             professors = self.read_resume(resumes)
             # status = self.db.create_professors(professors, self.cookies["user_id"])
-            ResumesPage._calculate_similarity(professors, tcc_theme)
-
+            scores = self._calculate_similarity(professors, tcc_theme)
+            st.write(scores)
             # if status:
             #     pass
             # else:
             #     st.error("Ocorreu um erro. :confused:")
 
-    @staticmethod
-    def _calculate_similarity(professors: Dict[str, List[str]], tcc_theme: str):
-        """Calculate the semantic similarities between professors's specialities and TCC theme
-        using the BGE-M3 algorithm.
-
-        Args:
-            tcc_theme(Optional[str]): TCC theme
-            professors (Dict[str, List[str]]): professors
-        """
-        colbert_scores = defaultdict(list)
-        model = BGEM3FlagModel("BAAI/bge-m3", use_fp16=True)
+    def _calculate_similarity(self, professors: str, tcc_theme: str) -> defaultdict:
+        """Calculate similarity between professors's and TCC theme strings."""
+        scores = defaultdict(dict)
         for professor, specialities in professors.items():
-            for speciality in specialities:
-                output_1 = model.encode(
-                    tcc_theme, return_sparse=True, return_colbert_vecs=True
-                )
-                output_2 = model.encode(
-                    speciality, return_sparse=True, return_colbert_vecs=True
-                )
-                colbert_score = model.colbert_score(
-                    output_1["colbert_vecs"], output_2["colbert_vecs"]
-                )
-                colbert_scores[professor].append({speciality: colbert_score})
-        return st.write(colbert_scores)
+            scores_list = self._query(
+                {
+                    "inputs": {
+                        "source_sentence": f"{tcc_theme}",
+                        "sentences": [speciality for speciality in specialities],
+                    }
+                }
+            )
+            scores[professor] = {
+                speciality: score
+                for speciality, score in zip(specialities, scores_list)
+            }
+        return scores
+
+    def _query(self, payload):
+        "Performs query to BGE-M3 endpoint"
+        response = requests.post(self.API_URL, headers=self.headers, json=payload)
+        return response.json()
 
     @staticmethod
     def _validate_theme_and_resumes(
