@@ -43,17 +43,30 @@ class ResumesPage:
             tcc_theme, resumes
         )
         if st.button("Sugerir professores") and theme_and_resumes_validated:
-            professors = self.read_resume(resumes)
-            # status = self.db.create_professors(professors, self.cookies["user_id"])
-            scores = self._calculate_similarity(professors, tcc_theme)
-            st.write(scores)
-            # if status:
-            #     pass
-            # else:
-            #     st.error("Ocorreu um erro. :confused:")
+            with st.status("Aguarde...", expanded=True) as status:
+                st.write("Processando currículos...")
+                professors = self.read_resume(resumes)
+                st.write("Criando professores no banco de dados...")
+                exists = self.db.create_professors(professors, self.cookies["user_id"])
+                if exists:
+                    st.write("Calculando similaridade...")
+                    professors_scores = self._calculate_similarity(
+                        professors, tcc_theme
+                    )
+                    status.update(label="Concluído!", state="complete", expanded=False)
+                else:
+                    st.error("Ocorreu um erro. :confused:")
+            st.write(professors_scores) if professors_scores else None
 
-    def _calculate_similarity(self, professors: str, tcc_theme: str) -> defaultdict:
-        """Calculate similarity between professors's and TCC theme strings."""
+    def _calculate_similarity(
+        self, professors: Dict[str, List[str]], tcc_theme: str
+    ) -> defaultdict:
+        """Calculate similarity between professors's and TCC theme strings.
+
+        Args:
+            professors (Dict[str, List[str]]): professors's names and specialities
+            tcc_theme (str): TCC theme
+        """
         scores = defaultdict(dict)
         for professor, specialities in professors.items():
             scores_list = self._query(
@@ -70,8 +83,12 @@ class ResumesPage:
             }
         return scores
 
-    def _query(self, payload):
-        "Performs query to BGE-M3 endpoint"
+    def _query(self, payload) -> Dict[str, str]:
+        """Performs query to BGE-M3 endpoint
+
+        Args:
+            payload (Dict[str, str]): payload to send
+        """
         response = requests.post(self.API_URL, headers=self.headers, json=payload)
         return response.json()
 
@@ -99,7 +116,7 @@ class ResumesPage:
         return False
 
     def read_resume(self, resumes: List[BytesIO]) -> Dict[str, List[str]]:
-        """Parse the XML resumes, get the specialties for every professor
+        """Parse the XML resumes, get the specialities for every professor
 
         Args:
             resumes (List[BytesIO]): professors's resumes

@@ -116,8 +116,8 @@ class Database:
             WHERE docentes.user_id = %s)
         )"""
         teachers_to_insert = [
-            {"user_id": int(user_id), "nome": teacher, "especialidade": specialties}
-            for teacher, specialties in teachers.items()
+            {"user_id": int(user_id), "nome": teacher, "especialidade": specialities}
+            for teacher, specialities in teachers.items()
         ]
         with self.connection:
             with self.connection.cursor(cursor_factory=NamedTupleCursor) as cursor:
@@ -139,7 +139,7 @@ class Database:
 
         Returns:
             Optional[Tuple[int, str, List[str]]]: Tuple containing the professor's ID,
-            name and specialties, None if there's no professor.
+            name and specialities, None if there's no professor.
         """
         query = """
         SELECT professor_id, nome, areas_de_atuacao FROM docentes WHERE user_id = %s AND nome = %s;
