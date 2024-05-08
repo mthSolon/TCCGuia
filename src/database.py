@@ -51,14 +51,14 @@ class Database:
                 users = cursor.fetchall()
                 return users
 
-    def read_user(self, email: str) -> Optional[Tuple[int, str]]:
+    def read_user(self, email: str) -> Optional[Tuple[int, str, str]]:
         """Check if a user exists in the database
 
         Args:
             email (str): user's email
 
         Returns:
-            Optional[Tuple[int, str]]: user_id, username and password
+            Optional[Tuple[int, str, str]]: user_id, username and password
         """
         query = "SELECT id, username, senha FROM users WHERE email = %s;"
         with self.connection:
@@ -67,7 +67,7 @@ class Database:
                 user = cursor.fetchone()
                 if user:
                     return user.id, user.username, user.senha
-                return None, None, None
+                return None, None, None # This looks ugly...
 
     def create_user(self, username: str, email: str, password: str) -> int:
         """Create user in the database
@@ -154,7 +154,7 @@ class Database:
                         professor.nome,
                         professor.areas_de_atuacao,
                     )
-                return None, None, None
+                return None, None, None # Again...
 
     def delete_professor(self, professor_id: Union[str, int]) -> bool:
         """Delete professor in the database
