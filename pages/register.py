@@ -47,15 +47,15 @@ class RegisterPage:
         if not (self.username and self.email and self.password):
             self.cookies["authentication_status"] = "dados_invalidos"
             return "Por favor, preencha os campos necessários."
-        _, username, _ = self.db.read_user(self.email)
-        if username:
+        user = self.db.read_user(self.email)
+        if not user.empty:
             self.cookies["authentication_status"] = "nao_autorizado"
             return "Usuário com este email já está cadastrado"
         hashed_pw = Hasher.hash_pw(self.password)
-        user_id = self.db.create_user(self.username, self.email, hashed_pw)
-        if user_id:
+        user = self.db.create_user(self.username, self.email, hashed_pw)
+        if user.at[0, "id"]:
             self.cookies["username"] = self.username
-            self.cookies["user_id"] = str(user_id)
+            self.cookies["user_id"] = str(user.at[0, "id"])
             self.cookies["authentication_status"] = "autorizado"
             return True
         else:

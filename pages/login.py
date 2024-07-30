@@ -48,10 +48,11 @@ class LoginPage:
         if not (self.email and self.password):
             self.cookies["authentication_status"] = "dados_invalidos"
             return "Por favor, preencha os campos necessários."
-        user_id, username, user_pw = self.db.read_user(self.email)
-        if user_id and Hasher.check_pw(user_pw, self.password):
-            self.cookies["username"] = username
-            self.cookies["user_id"] = str(user_id)
+        user = self.db.read_user(self.email)
+        if user.at[0, "id"] and Hasher.check_pw(user.at[0, "senha"], self.password):
+            print(user)
+            self.cookies["username"] = user.at[0, "username"]
+            self.cookies["user_id"] = str(user.at[0, "id"])
             self.cookies["authentication_status"] = "autorizado"
             return True
         else:

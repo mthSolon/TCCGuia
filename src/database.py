@@ -1,10 +1,13 @@
 """Database related class and methods"""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple, Union
 
 import psycopg2
 import streamlit as st
+import pandas as pd
+from sqlalchemy.sql import text
+from streamlit.connections.sql_connection import SQLConnection
 from psycopg2.extras import NamedTupleCursor, execute_batch
 
 
@@ -12,31 +15,31 @@ from psycopg2.extras import NamedTupleCursor, execute_batch
 class Database:
     """Manages database functionality"""
 
-    db_name: str
-    db_user: str
-    db_password: str
-    db_host: str
-    db_port: int
-    connection: psycopg2.extensions.connection = field(default=None, init=False)
+    # db_name: str
+    # db_user: str
+    # db_password: str
+    # db_host: str
+    # db_port: int
+    # connection: SQLConnection
 
     def init_connection(self):
         """Initialize the database connection."""
         try:
-            self.connection = self._create_connection()
-            print(f"Connection to {st.secrets.db_credentials.db_host} successful")
+            self.connection = st.connection(name="postgresql", type="sql")
+            print(f"Connection to {st.secrets.connections.postgresql.host} successful")
         except psycopg2.OperationalError as e:
             print(f"Database Error: '{e}'")
 
-    @st.cache_resource
-    def _create_connection(self) -> psycopg2.extensions.connection:
-        """Create and caches the connection with the database."""
-        return psycopg2.connect(
-            database=self.db_name,
-            user=self.db_user,
-            password=self.db_password,
-            host=self.db_host,
-            port=self.db_port,
-        )
+    # @st.cache_resource
+    # def _create_connection(self) -> psycopg2.extensions.connection:
+    #     """Create and caches the connection with the database."""
+    #     return psycopg2.connect(
+    #         database=self.db_name,
+    #         user=self.db_user,
+    #         password=self.db_password,
+    #         host=self.db_host,
+    #         port=self.db_port,
+    #     )
 
     def fetch_users(self) -> List[Dict]:
         """Fetch all users data
@@ -45,13 +48,10 @@ class Database:
             List[Dict]: users data
         """
         query = "SELECT * FROM users;"
-        with self.connection:
-            with self.connection.cursor() as cursor:
-                cursor.execute(query)
-                users = cursor.fetchall()
-                return users
+        users = self.connection.query(query)
+        return users
 
-    def read_user(self, email: str) -> Optional[Tuple[int, str, str]]:
+    def read_user(self, email: str) -> pd.DataFrame:
         """Check if a user exists in the database
 
         Args:
@@ -60,16 +60,11 @@ class Database:
         Returns:
             Optional[Tuple[int, str, str]]: user_id, username and password
         """
-        query = "SELECT id, username, senha FROM users WHERE email = %s;"
-        with self.connection:
-            with self.connection.cursor(cursor_factory=NamedTupleCursor) as cursor:
-                cursor.execute(query, (email,))
-                user = cursor.fetchone()
-                if user:
-                    return user.id, user.username, user.senha
-                return None, None, None # This looks ugly...
+        query = "SELECT id, username, senha FROM users WHERE email = :email;"
+        user = self.connection.query(query, params={"email": email})
+        return user
 
-    def create_user(self, username: str, email: str, password: str) -> int:
+    def create_user(self, username: str, email: str, password: str) -> pd.DataFrame:
         """Create user in the database
 
         Args:
@@ -80,20 +75,16 @@ class Database:
         Returns:
             int: user id
         """
-        insert_query = "INSERT INTO users (username, email, senha) VALUES (%s, %s, %s);"
-        select_query = "SELECT id FROM users WHERE email = %s;"
-        with self.connection:
-            with self.connection.cursor(cursor_factory=NamedTupleCursor) as cursor:
-                cursor.execute(insert_query, (username, email, password))
-                self.connection.commit()
-                print(f"{username} registered")
-                cursor.execute(select_query, (email,))
-                user = cursor.fetchone()
-                return user.id
+        insert_query = "INSERT INTO users (username, email, senha) VALUES (:username, :email, :senha);"
+        select_query = "SELECT id FROM users WHERE email = :email;"
+        with self.connection.session as cursor:
+            cursor.execute(text(insert_query), {"username": username, "email": email, "senha": password})
+            cursor.commit()
+            print(f"{username} registered")
+        user = self.connection.query(select_query, params={"email": email})
+        return user
 
-    def create_professors(
-        self, teachers: List[Dict[str, List[str]]], user_id: Union[str, int]
-    ) -> bool:
+    def create_professors(self, teachers: List[Dict[str, List[str]]], user_id: Union[str, int]) -> bool:
         """Create professors in the database
 
         Args:
@@ -128,9 +119,7 @@ class Database:
                 print(f"Teachers for {user_id} created")
                 return True
 
-    def read_professor(
-        self, professor_name: str, user_id: Union[str, int]
-    ) -> Optional[Tuple[int, str, List[str]]]:
+    def read_professor(self, professor_name: str, user_id: Union[str, int]) -> Optional[Tuple[int, str, List[str]]]:
         """Read professor in the database
 
         Args:
@@ -154,7 +143,7 @@ class Database:
                         professor.nome,
                         professor.areas_de_atuacao,
                     )
-                return None, None, None # Again...
+                return None, None, None  # Again...
 
     def delete_professor(self, professor_id: Union[str, int]) -> bool:
         """Delete professor in the database
