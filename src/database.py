@@ -1,14 +1,12 @@
 """Database related class and methods"""
 
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Union
 
 import psycopg2
 import streamlit as st
 import pandas as pd
 from sqlalchemy.sql import text
-from streamlit.connections.sql_connection import SQLConnection
-from psycopg2.extras import NamedTupleCursor, execute_batch
 
 
 @dataclass
@@ -41,7 +39,7 @@ class Database:
     #         port=self.db_port,
     #     )
 
-    def fetch_users(self) -> List[Dict]:
+    def fetch_users(self) -> pd.DataFrame:
         """Fetch all users data
 
         Returns:
@@ -84,7 +82,7 @@ class Database:
         user = self.connection.query(select_query, params={"email": email})
         return user
 
-    def create_professors(self, teachers: List[Dict[str, List[str]]], user_id: Union[str, int]) -> bool:
+    def create_professors(self, teachers: Optional[Dict[str, List[str]]], user_id: Union[str, int]) -> bool:
         """Create professors in the database
 
         Args:
@@ -96,30 +94,30 @@ class Database:
         """
 
         professors_query = """INSERT INTO docentes (user_id, nome, areas_de_atuacao)
-        SELECT %(user_id)s, %(nome)s, %(especialidade)s WHERE NOT EXISTS (
+        SELECT :user_id, :nome, :especialidade WHERE NOT EXISTS (
         SELECT user_id, nome, areas_de_atuacao FROM docentes WHERE
-        user_id = %(user_id)s AND nome = %(nome)s AND areas_de_atuacao = %(especialidade)s  
+        user_id = :user_id AND nome = :nome AND areas_de_atuacao = :especialidade
         );
         """
         user_query = """UPDATE users SET professores =
         (SELECT ARRAY(
             SELECT professor_id FROM docentes
-            WHERE docentes.user_id = %s)
+            WHERE docentes.user_id = :user_id)
         )"""
-        teachers_to_insert = [
-            {"user_id": int(user_id), "nome": teacher, "especialidade": specialities}
-            for teacher, specialities in teachers.items()
-        ]
-        with self.connection:
-            with self.connection.cursor(cursor_factory=NamedTupleCursor) as cursor:
-                execute_batch(cursor, professors_query, teachers_to_insert)
-                self.connection.commit()
-                cursor.execute(user_query, (int(user_id),))
-                self.connection.commit()
-                print(f"Teachers for {user_id} created")
-                return True
+        if teachers:
+            teachers_to_insert = [
+                {"user_id": int(user_id), "nome": teacher, "especialidade": specialities}
+                for teacher, specialities in teachers.items()
+            ]
+        with self.connection.session as cursor:
+            cursor.execute(text(professors_query), teachers_to_insert)
+            cursor.commit()
+            cursor.execute(text(user_query), {"user_id": int(user_id)})
+            cursor.commit()
+            print(f"Teachers for {user_id} created")
+            return True
 
-    def read_professor(self, professor_name: str, user_id: Union[str, int]) -> Optional[Tuple[int, str, List[str]]]:
+    def read_professor(self, professor_name: str, user_id: Union[str, int]) -> Optional[pd.DataFrame]:
         """Read professor in the database
 
         Args:
@@ -131,19 +129,12 @@ class Database:
             name and specialities, None if there's no professor.
         """
         query = """
-        SELECT professor_id, nome, areas_de_atuacao FROM docentes WHERE user_id = %s AND nome = %s;
+        SELECT professor_id, nome, areas_de_atuacao FROM docentes WHERE user_id = :user_id AND nome = :nome;
         """
-        with self.connection:
-            with self.connection.cursor(cursor_factory=NamedTupleCursor) as cursor:
-                cursor.execute(query, (int(user_id), professor_name))
-                professor = cursor.fetchone()
-                if professor:
-                    return (
-                        professor.professor_id,
-                        professor.nome,
-                        professor.areas_de_atuacao,
-                    )
-                return None, None, None  # Again...
+        professor = self.connection.query(query, params={"user_id": user_id, "nome": professor_name})
+        if not professor.empty:
+            return professor
+        return None
 
     def delete_professor(self, professor_id: Union[str, int]) -> bool:
         """Delete professor in the database
@@ -154,9 +145,8 @@ class Database:
         Returns:
             bool: True if deletion was successful, False otherwise
         """
-        query = "DELETE FROM docentes WHERE professor_id = %s;"
-        with self.connection:
-            with self.connection.cursor(cursor_factory=NamedTupleCursor) as cursor:
-                cursor.execute(query, (int(professor_id),))
-                self.connection.commit()
-                return True
+        query = "DELETE FROM docentes WHERE professor_id = :professor_id;"
+        with self.connection.session as cursor:
+            cursor.execute(text(query), {"professor_id": professor_id})
+            cursor.commit()
+            return True
