@@ -1,5 +1,5 @@
 psycopg2_binary==2.9.9
 sqlalchemy==2.0.31
-python_bcrypt==0.3.2
+bcrypt==4.2.0
 streamlit==1.33.0
 streamlit_cookies_manager==0.2.0
