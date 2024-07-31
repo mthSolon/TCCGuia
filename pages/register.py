@@ -53,7 +53,7 @@ class RegisterPage:
             return "Usuário com este email já está cadastrado"
         hashed_pw = Hasher.hash_pw(self.password)
         user = self.db.create_user(self.username, self.email, hashed_pw)
-        if user.at[0, "id"]:
+        if not user.empty:
             self.cookies["username"] = self.username
             self.cookies["user_id"] = str(user.at[0, "id"])
             self.cookies["authentication_status"] = "autorizado"
