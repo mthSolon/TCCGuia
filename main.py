@@ -2,9 +2,6 @@
 
 import streamlit as st
 
-from src.helpers import setup_db_connection
-
-
 def main():
     """Main function that initializes the necessary modules"""
     st.set_page_config(
@@ -13,7 +10,6 @@ def main():
         menu_items={"About": "# Feito por *Matheus R. O. Solon*"},
     )
 
-    setup_db_connection()
     st.title("Bem vindo ao :green[*TCCGuia*] :wave:")
     st.markdown(
         ":green[TCCGuia] te ajudará a escolher seu professor orientador baseado no tema do seu TCC!"

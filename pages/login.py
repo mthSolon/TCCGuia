@@ -3,7 +3,6 @@
 from typing import Union
 
 import streamlit as st
-from main import setup_db_connection
 from src.database import Database
 from src.hasher import Hasher
 from src.helpers import fetch_cookies
@@ -16,10 +15,7 @@ class LoginPage:
         self.cookies = fetch_cookies()
         if self.cookies.get("authentication_status") == "autorizado":
             st.switch_page("pages/resumes.py")
-        if "db_connection" not in st.session_state:
-            setup_db_connection()
-            st.rerun()
-        self.db: Database = st.session_state["db_connection"]
+        self.db: Database = Database.get_instance()
         self._render_login_page()
 
     def _render_login_page(self) -> None:
@@ -50,7 +46,6 @@ class LoginPage:
             return "Por favor, preencha os campos necessários."
         user = self.db.read_user(self.email)
         if not user.empty and Hasher.check_pw(user.at[0, "senha"], self.password):
-            print(user)
             self.cookies["username"] = user.at[0, "username"]
             self.cookies["user_id"] = str(user.at[0, "id"])
             self.cookies["authentication_status"] = "autorizado"

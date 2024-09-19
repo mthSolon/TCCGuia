@@ -3,7 +3,6 @@
 from typing import Union
 
 import streamlit as st
-from main import setup_db_connection
 from src.database import Database
 from src.hasher import Hasher
 from src.helpers import fetch_cookies
@@ -14,10 +13,7 @@ class RegisterPage:
 
     def __init__(self) -> None:
         self.cookies = fetch_cookies()
-        if "db_connection" not in st.session_state:
-            setup_db_connection()
-            st.rerun()
-        self.db: Database = st.session_state["db_connection"]
+        self.db: Database = Database.get_instance()
         self._render_register_page()
 
     def _render_register_page(self) -> None:

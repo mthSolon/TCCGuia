@@ -1,6 +1,5 @@
 """Database related class and methods"""
 
-from dataclasses import dataclass
 from typing import Dict, List, Optional, Union
 
 import psycopg2
@@ -9,7 +8,6 @@ import pandas as pd
 from sqlalchemy.sql import text
 
 
-@dataclass
 class Database:
     """Manages database functionality"""
 
@@ -20,7 +18,7 @@ class Database:
     # db_port: int
     # connection: SQLConnection
 
-    def init_connection(self):
+    def __init__(self):
         """Initialize the database connection."""
         try:
             self.connection = st.connection(name="postgresql", type="sql")
@@ -38,6 +36,18 @@ class Database:
     #         host=self.db_host,
     #         port=self.db_port,
     #     )
+
+    @st.cache_resource
+    @staticmethod
+    def get_instance():
+        """Get a Database instance
+
+        Returns:
+            Database: database instance
+        """
+        if "db_instance" not in st.session_state:
+            st.session_state["db_connection"] = Database()
+        return st.session_state["db_connection"]
 
     def fetch_users(self) -> pd.DataFrame:
         """Fetch all users data
@@ -82,7 +92,7 @@ class Database:
         user = self.connection.query(select_query, params={"email": email})
         return user
 
-    def create_professors(self, teachers: Optional[Dict[str, List[str]]], user_id: Union[str, int]) -> bool:
+    def create_professors(self, teachers: Optional[Dict[str, List[str]]], user_id: Union[str, int]) -> pd.DataFrame:
         """Create professors in the database
 
         Args:
@@ -90,7 +100,7 @@ class Database:
             user_id (Union[str, int]): user id
 
         Returns:
-            bool: True if operation was successful
+            pd.DataFrame: return user's professors
         """
 
         professors_query = """INSERT INTO docentes (user_id, nome, areas_de_atuacao)
@@ -104,6 +114,9 @@ class Database:
             SELECT professor_id FROM docentes
             WHERE docentes.user_id = :user_id)
         )"""
+        return_professors_query = """SELECT professor_id, nome, areas_de_atuacao FROM docentes WHERE
+        docentes.user_id = :user_id;
+        """
         if teachers:
             teachers_to_insert = [
                 {"user_id": int(user_id), "nome": teacher, "especialidade": specialities}
@@ -114,14 +127,14 @@ class Database:
             cursor.commit()
             cursor.execute(text(user_query), {"user_id": int(user_id)})
             cursor.commit()
-            print(f"Teachers for {user_id} created")
-            return True
+        professors = self.connection.query(return_professors_query, params={"user_id": user_id})
+        print(f"Teachers for {user_id} created")
+        return professors
 
-    def read_professor(self, professor_name: str, user_id: Union[str, int]) -> Optional[pd.DataFrame]:
+    def read_professor(self, user_id: Union[str, int]) -> Optional[pd.DataFrame]:
         """Read professor in the database
 
         Args:
-            professor_name (str): professor's name
             user_id (Union[str, int]): user id
 
         Returns:
@@ -129,9 +142,9 @@ class Database:
             name and specialities, None if there's no professor.
         """
         query = """
-        SELECT professor_id, nome, areas_de_atuacao FROM docentes WHERE user_id = :user_id AND nome = :nome;
+        SELECT professor_id, nome, areas_de_atuacao FROM docentes WHERE user_id = :user_id;
         """
-        professor = self.connection.query(query, params={"user_id": user_id, "nome": professor_name})
+        professor = self.connection.query(query, params={"user_id": user_id})
         if not professor.empty:
             return professor
         return None
