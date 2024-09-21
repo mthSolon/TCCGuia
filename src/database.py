@@ -37,8 +37,8 @@ class Database:
     #         port=self.db_port,
     #     )
 
-    @st.cache_resource
     @staticmethod
+    @st.cache_resource
     def get_instance():
         """Get a Database instance
 
