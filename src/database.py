@@ -22,7 +22,6 @@ class Database:
         """Initialize the database connection."""
         try:
             self.connection = st.connection(name="postgresql", type="sql")
-            st.write(f"Connection to {st.secrets.connections.postgresql.host} successful")
             print(f"Connection to {st.secrets.connections.postgresql.host} successful")
         except psycopg2.OperationalError as e:
             print(f"Database Error: '{e}'")
@@ -48,6 +47,7 @@ class Database:
         """
         if "db_instance" not in st.session_state:
             st.session_state["db_connection"] = Database()
+            st.rerun()
         return st.session_state["db_connection"]
 
     def fetch_users(self) -> pd.DataFrame:
@@ -71,7 +71,6 @@ class Database:
         """
         query = "SELECT id, username, senha FROM users WHERE email = :email;"
         user = self.connection.query(query, params={"email": email})
-        st.write(f"User from DB: {user}")
         return user
 
     def create_user(self, username: str, email: str, password: str) -> pd.DataFrame:
