@@ -3,7 +3,7 @@
 import streamlit as st
 from streamlit_cookies_manager import EncryptedCookieManager
 
-from database import Database
+from src.database import Database
 
 def fetch_cookies():
     """Fetch the stored cookies"""
