@@ -44,6 +44,7 @@ class RegisterPage:
             self.cookies["authentication_status"] = "dados_invalidos"
             return "Por favor, preencha os campos necessários."
         user = self.db.read_user(self.email)
+        st.write(f"User from register: {user}")
         if not user.empty:
             self.cookies["authentication_status"] = "nao_autorizado"
             return "Usuário com este email já está cadastrado"
