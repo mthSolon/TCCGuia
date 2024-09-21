@@ -5,7 +5,7 @@ from typing import Union
 import streamlit as st
 from src.database import Database
 from src.hasher import Hasher
-from src.helpers import fetch_cookies
+from src.helpers import fetch_cookies, setup_database_connection
 
 
 class LoginPage:
@@ -15,7 +15,10 @@ class LoginPage:
         self.cookies = fetch_cookies()
         if self.cookies.get("authentication_status") == "autorizado":
             st.switch_page("pages/resumes.py")
-        self.db: Database = Database.get_instance()
+        if "db_connection" not in st.session_state:
+            setup_database_connection()
+            st.rerun()
+        self.db: Database = st.session_state["db_connection"]
         self._render_login_page()
 
     def _render_login_page(self) -> None:

@@ -11,7 +11,7 @@ import streamlit as st
 from streamlit.runtime.uploaded_file_manager import UploadedFile
 
 from src.database import Database
-from src.helpers import fetch_cookies
+from src.helpers import fetch_cookies, setup_database_connection
 
 
 class ResumesFacade:
@@ -121,7 +121,10 @@ class ResumesPage:
         self.headers = {"Authorization": f"Bearer {st.secrets.api_token}"}
         if self.cookies.get("authentication_status") != "autorizado":
             st.switch_page("pages/login.py")
-        self.db: Database = Database.get_instance()
+        if "db_connection" not in st.session_state:
+            setup_database_connection()
+            st.rerun()
+        self.db: Database = st.session_state["db_connection"]
         self.facade = ResumesFacade(self.db, self.api_url, self.headers)
         self._render_resumes_page()
 

@@ -37,19 +37,6 @@ class Database:
     #         port=self.db_port,
     #     )
 
-    @staticmethod
-    @st.cache_resource
-    def get_instance():
-        """Get a Database instance
-
-        Returns:
-            Database: database instance
-        """
-        if "db_instance" not in st.session_state:
-            st.session_state["db_connection"] = Database()
-            st.rerun()
-        return st.session_state["db_connection"]
-
     def fetch_users(self) -> pd.DataFrame:
         """Fetch all users data
 
